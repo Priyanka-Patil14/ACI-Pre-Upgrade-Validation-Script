@@ -22,7 +22,7 @@ from six.moves import input
 from textwrap import TextWrapper
 from getpass import getpass
 from collections import defaultdict, OrderedDict
-from datetime import datetime
+from datetime import datetime, timedelta
 from argparse import ArgumentParser
 from itertools import chain
 import threading
@@ -6343,6 +6343,41 @@ def wred_affected_model_check(tversion, fabric_nodes, **kwargs):
     return Result(result=result, headers=headers, data=data, recommended_action=recommended_action, doc_url=doc_url)
 
 
+@check_wrapper(check_title="Stale dbgacEpgSummaryTask Objects")
+def stale_epg_summary_task_check(tversion, **kwargs):
+    result = PASS
+    headers = ["DN", "Start Time"]
+    data = []
+    recommended_action = "Delete the listed stale dbgacEpgSummaryTask objects to prevent policymgr crash."
+    doc_url = "https://datacenter.github.io/ACI-Pre-Upgrade-Validation-Script/validations/#stale-dbgacepgsummarytask-objects"
+
+    if not tversion:
+        return Result(result=MANUAL, msg=TVER_MISSING)
+
+    version_affected = (
+        (tversion.major1 == "6" and tversion.major2 == "1" and (tversion.older_than("6.1(5e)") or tversion.same_as("6.1(5e)")))
+        or (tversion.major1 == "6" and tversion.major2 == "2" and (tversion.older_than("6.2(1g)") or tversion.same_as("6.2(1g)")))
+    )
+    if not version_affected:
+        return Result(result=NA, msg=VER_NOT_AFFECTED)
+
+    threshold = datetime.utcnow() - timedelta(hours=24)
+    for obj in icurl("class", 'dbgacEpgSummaryTask.json?query-target-filter=eq(dbgacEpgSummaryTask.operSt,"processing")'):
+        attr = obj["dbgacEpgSummaryTask"]["attributes"]
+        dn = attr.get("dn", "")
+        start_ts = attr.get("startTs", "")
+        try:
+            task_dt = datetime.strptime(start_ts[:19], "%Y-%m-%dT%H:%M:%S")
+        except ValueError:
+            continue
+        if task_dt < threshold:
+            data.append([dn, start_ts])
+
+    if data:
+        result = FAIL_O
+    return Result(result=result, headers=headers, data=data, recommended_action=recommended_action, doc_url=doc_url)
+
+
 # ---- Script Execution ----
 
 
@@ -6512,6 +6547,7 @@ class CheckManager:
         auto_firmware_update_on_switch_check,
         rogue_ep_coop_exception_mac_check,
         n9k_c9408_model_lem_count_check,
+        stale_epg_summary_task_check,
     ]
     ssh_checks = [
         # General

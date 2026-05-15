@@ -199,6 +199,7 @@ Items                                           | Defect       | This Script    
 [N9K-C9408 with more than 5 N9K-X9400-16W LEMs][d31] | CSCws82819   | :white_check_mark: | :no_entry_sign:
 [Multi-Pod Modular Spine Bootscript File][d32]  | CSCwr66848   | :white_check_mark: | :no_entry_sign:
 [WRED with Affected FM Models][d33]             | CSCwt50713   | :white_check_mark: | :no_entry_sign:
+[Stale dbgacEpgSummaryTask Objects][d34]        | CSCwt69100   | :white_check_mark: | :no_entry_sign:
 
 [d1]: #ep-announce-compatibility
 [d2]: #eventmgr-db-size-defect-susceptibility
@@ -233,6 +234,7 @@ Items                                           | Defect       | This Script    
 [d31]: #n9k-c9408-with-more-than-5-n9k-x9400-16w-lems
 [d32]: #multi-pod-modular-spine-bootscript-file
 [d33]: #wred-with-affected-fm-models
+[d34]: #stale-dbgacepgsummarytask-objects
 
 ## General Check Details
 
@@ -2766,7 +2768,17 @@ Affected hardware models: N9K-C9504-FM-E, N9K-C9508-FM-E, N9K-C9516-FM-E.
 To avoid this issue, disable WRED on the affected nodes or upgrade to a release newer than 6.1(5e) in the 6.1(x) train or newer than 6.2(1g) in the 6.2(x) train.
 
 
+### Stale dbgacEpgSummaryTask Objects
+
+Due to [CSCwt69100][68], a stale `dbgacEpgSummaryTask` object stuck in `processing` state with empty content can cause the policymgr process to crash on all APICs during an upgrade or process restart.
+
+Affected versions: version <= 6.1(5e) or version <= 6.2(1g).
+
+The check queries for `dbgacEpgSummaryTask` objects with `operSt="processing"` and `startTs` older than 24 hours. Such objects are considered stale and unexpected. If found, delete them before proceeding with the upgrade to prevent policymgr from crashing on restart.
+
+
 [0]: https://github.com/datacenter/ACI-Pre-Upgrade-Validation-Script
+[68]: https://bst.cloudapps.cisco.com/bugsearch/bug/CSCwt69100
 [1]: https://www.cisco.com/c/dam/en/us/td/docs/Website/datacenter/apicmatrix/index.html
 [2]: https://www.cisco.com/c/en/us/support/switches/nexus-9000-series-switches/products-release-notes-list.html
 [3]: https://www.cisco.com/c/en/us/td/docs/dcn/aci/apic/5x/release-notes/cisco-aci-nx-os-release-notes-1501.html#_Toc140580685
